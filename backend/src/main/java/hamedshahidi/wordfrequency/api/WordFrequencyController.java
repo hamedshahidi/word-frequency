@@ -10,6 +10,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache.ValueWrapper;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -28,6 +32,9 @@ public class WordFrequencyController {
 
     private static final Logger logger = LoggerFactory.getLogger(WordFrequencyController.class);
 
+    @Autowired
+    private CacheManager cacheManager;
+
     @PostMapping("/upload")
     public ResponseEntity<?> handleFileUpload(
             @RequestParam("file") MultipartFile file,
@@ -38,6 +45,15 @@ public class WordFrequencyController {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(null);
         }
+
+        // Check if result is already cached
+        String cacheKey = generateCacheKey(file, k);
+        Map<String, Integer> cachedResult = getCachedResult(cacheKey);
+
+        if (cachedResult != null) {
+            return ResponseEntity.ok(cachedResult);
+        }
+
         try {
             // Save the file to a temporary location
             Path tempFilePath = Files.createTempFile(null, null);
@@ -56,6 +72,9 @@ public class WordFrequencyController {
 
             // Delete temporary file
             Files.delete(tempFilePath);
+
+            // Cache the result
+            cacheResult(cacheKey, topKFrequencies);
 
             return ResponseEntity.ok(topKFrequencies);
 
@@ -85,6 +104,35 @@ public class WordFrequencyController {
         }
 
         return topKFrequencies;
+    }
+
+    private String generateCacheKey(MultipartFile file, int k) {
+        // Generate a unique cache key based on the file name, file size and k value
+        String fileName = file.getOriginalFilename();
+        long fileSize = file.getSize();
+        return fileName + "-" + fileSize + "-" + k;
+    }
+
+    private Map<String, Integer> getCachedResult(String cacheKey) {
+        Cache cache = cacheManager.getCache("wordFrequencies");
+        if (cache != null) {
+            ValueWrapper valueWrapper = cache.get(cacheKey);
+            if (valueWrapper != null) {
+                Object value = valueWrapper.get();
+                if (value instanceof Map) {
+                    Map<String, Integer> cachedResult = (Map<String, Integer>) value;
+                    return cachedResult;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void cacheResult(String cacheKey, Map<String, Integer> result) {
+        Cache cache = cacheManager.getCache("wordFrequencies");
+        if (cache != null) {
+            cache.put(cacheKey, result);
+        }
     }
 
 }
