@@ -35,7 +35,11 @@ public class WordFrequencyController {
     private static final Logger logger = LoggerFactory.getLogger(WordFrequencyController.class);
 
     @Autowired
-    private CacheManager cacheManager;
+    private final CacheManager cacheManager;
+
+    public WordFrequencyController(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
 
     @PostMapping("/upload")
     public ResponseEntity<WFResponse> handleFileUpload(
@@ -52,9 +56,9 @@ public class WordFrequencyController {
         String cacheKey = generateCacheKey(file, k);
         Map<String, Integer> cachedResult = getCachedResult(cacheKey);
         if (cachedResult != null) {
-            WFResponse response = new WFResponse(new ArrayList<>(cachedResult.keySet()),
+            WFResponse cashedResponse = new WFResponse(new ArrayList<>(cachedResult.keySet()),
                     new ArrayList<>(cachedResult.values()));
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(cashedResponse);
         }
 
         try {
@@ -92,23 +96,13 @@ public class WordFrequencyController {
     }
 
     private Map<String, Integer> getTopKFrequencies(Map<String, Integer> wordFrequencies, int k) {
-        PriorityQueue<Map.Entry<String, Integer>> maxHeap = new PriorityQueue<>(
-                Comparator.comparing(Map.Entry::getValue, Comparator.reverseOrder()));
-
-        // Sort by frequency
-        boolean queueIsFull = false;
-        for (Map.Entry<String, Integer> entry : wordFrequencies.entrySet()) {
-            if (!queueIsFull && !maxHeap.offer(entry)) {
-                logger.error("Queue is full. Unable to add entry.");
-                queueIsFull = true;
-            }
-        }
-        // Get top K frequencies
         Map<String, Integer> topKFrequencies = new LinkedHashMap<>();
-        for (int i = 0; i < k && !maxHeap.isEmpty(); i++) {
-            Map.Entry<String, Integer> entry = maxHeap.poll();
-            topKFrequencies.put(entry.getKey(), entry.getValue());
-        }
+
+        wordFrequencies.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .limit(k)
+                .forEachOrdered(entry -> topKFrequencies.put(entry.getKey(), entry.getValue()));
 
         return topKFrequencies;
     }
