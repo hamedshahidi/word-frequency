@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import hamedshahidi.wordfrequency.model.WFResponse;
 import jakarta.validation.constraints.Positive;
 
 import org.slf4j.Logger;
@@ -36,7 +38,7 @@ public class WordFrequencyController {
     private CacheManager cacheManager;
 
     @PostMapping("/upload")
-    public ResponseEntity<?> handleFileUpload(
+    public ResponseEntity<WFResponse> handleFileUpload(
             @RequestParam("file") MultipartFile file,
             @RequestParam("k") @Positive int k) {
 
@@ -49,9 +51,10 @@ public class WordFrequencyController {
         // Check if result is already cached
         String cacheKey = generateCacheKey(file, k);
         Map<String, Integer> cachedResult = getCachedResult(cacheKey);
-
         if (cachedResult != null) {
-            return ResponseEntity.ok(cachedResult);
+            WFResponse response = new WFResponse(new ArrayList<>(cachedResult.keySet()),
+                    new ArrayList<>(cachedResult.values()));
+            return ResponseEntity.ok(response);
         }
 
         try {
@@ -76,7 +79,11 @@ public class WordFrequencyController {
             // Cache the result
             cacheResult(cacheKey, topKFrequencies);
 
-            return ResponseEntity.ok(topKFrequencies);
+            // Create WFResponse object with words and frequencies
+            WFResponse response = new WFResponse(new ArrayList<>(topKFrequencies.keySet()),
+                    new ArrayList<>(topKFrequencies.values()));
+
+            return ResponseEntity.ok(response);
 
         } catch (IOException e) {
             logger.error("An error occurred while processing the uploaded file", e);
