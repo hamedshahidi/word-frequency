@@ -5,6 +5,7 @@ import axios from 'axios';
 function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [kValue, setKValue] = useState('');
+  const [wordFrequency, setWordFrequency] = useState([]);
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -21,7 +22,6 @@ function App() {
       alert('Please select a file.');
       return;
     }
-
     if (!kValue) {
       alert('Please enter a value for K.');
       return;
@@ -39,6 +39,13 @@ function App() {
       });
       
       // Handle response from the backend API
+      const words = response.data.words;
+      const frequencies = response.data.frequencies;
+      const wordFrequencyData = words.map((word, index) => ({
+        word: word,
+        frequency: frequencies[index]
+      }));
+      setWordFrequency(wordFrequencyData);
       console.log(response.data);
 
     } catch (error) {
@@ -61,6 +68,23 @@ function App() {
         </div>
         <button type="submit">Submit</button>
       </form>
+      {/* Display the table with word frequencies */}
+      <table>
+        <thead>
+          <tr>
+            <th>Word</th>
+            <th>Frequency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {wordFrequency && wordFrequency.map((entry) => (
+            <tr key={entry.word}>
+              <td>{entry.word}</td>
+              <td>{entry.frequency}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
