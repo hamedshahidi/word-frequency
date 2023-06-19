@@ -46,6 +46,11 @@ public class WordFrequencyController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("k") @Positive int k) {
 
+        // Check if the file is empty
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
         // Check if result is already cached
         String cacheKey = generateCacheKey(file, k, 0);
         Map<String, Integer> cachedResult = getCachedResult(cacheKey);
