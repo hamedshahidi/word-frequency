@@ -55,6 +55,15 @@ This is a full-stack web application that finds the top K most frequent words in
    ```
 3. Access the application in your browser at: `http://localhost:3000`
 
+## Testing
+
+### Backend
+
+- Run the backend tests using the command:
+  ```
+  mvn test
+  ```
+
 ## Usage
 
 1. Open the application in your browser.

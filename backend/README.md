@@ -21,3 +21,10 @@
 ## Running the Application
 
 - Start the backend API.
+
+## Testing
+
+- Run the backend tests using the command:
+  ```
+  mvn test
+  ```
