@@ -1,6 +1,8 @@
 import './App.css';
 import React, { useState } from 'react';
 import axios from 'axios';
+import 'bootstrap/dist/css/bootstrap.min.css';
+
 
 function App() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -55,21 +57,20 @@ function App() {
   };
 
   return (
-    <div>
-      <h1>Top K Words</h1>
+    <div className="container">
+      <h1 className="mt-5">Top K Words</h1>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="fileInput">Select File:</label>
-          <input type="file" id="fileInput" onChange={handleFileChange} />
+        <div className="mb-3">
+          <label htmlFor="fileInput" className="form-label">Select File:</label>
+          <input type="file" className="form-control" id="fileInput" onChange={handleFileChange} />
         </div>
-        <div>
-          <label htmlFor="kValueInput">K Value:</label>
-          <input type="number" id="kValueInput" value={kValue} onChange={handleKValueChange} />
+        <div className="mb-3">
+          <label htmlFor="kValueInput" className="form-label">K Value:</label>
+          <input type="number" className="form-control" id="kValueInput" value={kValue} onChange={handleKValueChange} />
         </div>
-        <button type="submit">Submit</button>
+        <button type="submit" className="btn btn-primary">Submit</button>
       </form>
-      {/* Display the table with word frequencies */}
-      <table>
+      <table className="table mt-4">
         <thead>
           <tr>
             <th>Word</th>
