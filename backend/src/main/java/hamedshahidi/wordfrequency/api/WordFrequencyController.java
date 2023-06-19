@@ -46,19 +46,13 @@ public class WordFrequencyController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("k") @Positive int k) {
 
-        Map<String, Integer> wordFrequencies = new HashMap<>();
-
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
         // Check if result is already cached
-        String cacheKey = generateCacheKey(file, k);
+        String cacheKey = generateCacheKey(file, k, 0);
         Map<String, Integer> cachedResult = getCachedResult(cacheKey);
         if (cachedResult != null) {
-            WFResponse cashedResponse = new WFResponse(new ArrayList<>(cachedResult.keySet()),
+            WFResponse cachedResponse = new WFResponse(new ArrayList<>(cachedResult.keySet()),
                     new ArrayList<>(cachedResult.values()));
-            return ResponseEntity.ok(cashedResponse);
+            return ResponseEntity.ok(cachedResponse);
         }
 
         try {
@@ -67,13 +61,16 @@ public class WordFrequencyController {
             file.transferTo(tempFilePath.toFile());
 
             // Read file content
-            String text = Files.readString(tempFilePath, StandardCharsets.UTF_8);
+            byte[] fileBytes = Files.readAllBytes(tempFilePath);
+            String text = new String(fileBytes, StandardCharsets.UTF_8);
 
             // Process file content to calculate word frequencies
+            Map<String, Integer> wordFrequencies = new HashMap<>();
             String[] words = StringUtils.tokenizeToStringArray(text, " ");
             for (String word : words) {
                 wordFrequencies.put(word, wordFrequencies.getOrDefault(word, 0) + 1);
             }
+
             // Get top K frequencies
             Map<String, Integer> topKFrequencies = getTopKFrequencies(wordFrequencies, k);
 
@@ -81,16 +78,61 @@ public class WordFrequencyController {
             Files.delete(tempFilePath);
 
             // Cache the result
-            cacheResult(cacheKey, topKFrequencies);
+            cacheResult(cacheKey, topKFrequencies, 0);
 
-            // Create WFResponse object with words and frequencies
+            return ResponseEntity.ok(createResponse(topKFrequencies));
+
+        } catch (IOException e) {
+            logger.error("An error occurred while processing the uploaded file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PostMapping("/upload-chunk")
+    public ResponseEntity<WFResponse> handleFileChunkUpload(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("offset") long offset,
+            @RequestParam("k") @Positive int k) {
+
+        // Check if result is already cached
+        String cacheKey = generateCacheKey(file, k, offset);
+        Map<String, Integer> cachedResult = getCachedResult(cacheKey);
+        if (cachedResult != null) {
+            return ResponseEntity.ok(createResponse(cachedResult));
+        }
+
+        try {
+            // Save the file chunk to a temporary location
+            Path tempFilePath = Files.createTempFile(null, null);
+            file.transferTo(tempFilePath.toFile());
+
+            // Read file chunk content
+            byte[] fileBytes = Files.readAllBytes(tempFilePath);
+            String text = new String(fileBytes, StandardCharsets.UTF_8);
+
+            // Process file chunk content to calculate word frequencies
+            Map<String, Integer> wordFrequencies = new HashMap<>();
+            String[] words = StringUtils.tokenizeToStringArray(text, " ");
+            for (String word : words) {
+                wordFrequencies.put(word, wordFrequencies.getOrDefault(word, 0) + 1);
+            }
+
+            // Get top K frequencies
+            Map<String, Integer> topKFrequencies = getTopKFrequencies(wordFrequencies, k);
+
+            // Delete temporary file chunk
+            Files.delete(tempFilePath);
+
+            // Cache the result
+            cacheResult(cacheKey, topKFrequencies, offset);
+
             WFResponse response = new WFResponse(new ArrayList<>(topKFrequencies.keySet()),
                     new ArrayList<>(topKFrequencies.values()));
 
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
-            logger.error("An error occurred while processing the uploaded file", e);
+            logger.error("An error occurred while processing the uploaded file chunk", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
@@ -107,11 +149,10 @@ public class WordFrequencyController {
         return topKFrequencies;
     }
 
-    private String generateCacheKey(MultipartFile file, int k) {
-        // Generate a unique cache key based on the file name, file size and k value
+    private String generateCacheKey(MultipartFile file, int k, long offset) {
         String fileName = file.getOriginalFilename();
         long fileSize = file.getSize();
-        return fileName + "-" + fileSize + "-" + k;
+        return fileName + "-" + fileSize + "-" + k + "-" + offset;
     }
 
     private Map<String, Integer> getCachedResult(String cacheKey) {
@@ -129,11 +170,17 @@ public class WordFrequencyController {
         return null;
     }
 
-    private void cacheResult(String cacheKey, Map<String, Integer> result) {
+    private void cacheResult(String cacheKey, Map<String, Integer> result, long offset) {
         Cache cache = cacheManager.getCache("wordFrequencies");
         if (cache != null) {
-            cache.put(cacheKey, result);
+            cache.put(cacheKey + "-" + offset, result);
         }
+    }
+
+    private WFResponse createResponse(Map<String, Integer> map) {
+        // Create WFResponse object with words and frequencies
+        return new WFResponse(new ArrayList<>(map.keySet()),
+                new ArrayList<>(map.values()));
     }
 
 }
