@@ -9,17 +9,30 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
+/**
+ * Configuration class for Redis caching.
+ */
 @Configuration
 @EnableCaching
 public class RedisConfig {
 
     private final RedisConnectionFactory redisConnectionFactory;
 
+    /**
+     * Constructs a new RedisConfig with the given RedisConnectionFactory.
+     *
+     * @param redisConnectionFactory the RedisConnectionFactory to use
+     */
     @Autowired
     public RedisConfig(RedisConnectionFactory redisConnectionFactory) {
         this.redisConnectionFactory = redisConnectionFactory;
     }
 
+    /**
+     * Creates and configures the CacheManager for Redis caching.
+     *
+     * @return the CacheManager instance
+     */
     @Bean
     public CacheManager cacheManager() {
         RedisCacheConfiguration cacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
